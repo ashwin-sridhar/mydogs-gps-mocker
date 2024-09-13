@@ -4,6 +4,8 @@ import json
 import websocket
 import _thread as thread
 import math
+import ssl
+import os
 
 # Earth's radius in meters
 EARTH_RADIUS = 6371000
@@ -21,17 +23,14 @@ def calculate_new_position(lat, lon, distance, bearing):
     lat1 = math.radians(lat)
     lon1 = math.radians(lon)
     angular_distance = distance / EARTH_RADIUS
-
     lat2 = math.asin(
         math.sin(lat1) * math.cos(angular_distance) +
         math.cos(lat1) * math.sin(angular_distance) * math.cos(bearing)
     )
-
     lon2 = lon1 + math.atan2(
         math.sin(bearing) * math.sin(angular_distance) * math.cos(lat1),
         math.cos(angular_distance) - math.sin(lat1) * math.sin(lat2)
     )
-
     return math.degrees(lat2), math.degrees(lon2)
 
 def on_message(ws, message):
@@ -67,15 +66,20 @@ def on_open(ws):
             gps_data["timestamp"] = time.time()
             
             time.sleep(30)  # Wait for 30 seconds before sending the next data point
-
     thread.start_new_thread(run, ())
 
 if __name__ == "__main__":
     websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("wss://ashsridhar.xyz",
+    
+    # Create a custom SSL context
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    ws = websocket.WebSocketApp("wss://ec2-3-234-163-231.compute-1.amazonaws.com:4000",
                                 on_open=on_open,
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)
     
-    ws.run_forever()
+    ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False})
